@@ -6,8 +6,6 @@ import (
 	fibergraphql "github.com/coze-hosting/fiber-graphql/src"
 	"github.com/gofiber/fiber/v2"
 	"github.com/graphql-go/graphql"
-	"github.com/graphql-go/handler"
-	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
 func main() {
@@ -62,15 +60,11 @@ func main() {
 	)
 	app.Get("/subscriptions", subscriptionHandler.Handle)
 
-	graphQlHandler := handler.New(&handler.Config{
-		Schema:     &schema,
-		Playground: true,
-	})
-
-	app.All("/graphql", func(c *fiber.Ctx) error {
-		fasthttpadaptor.NewFastHTTPHandler(graphQlHandler)(c.Context())
-		return nil
-	})
+	handler := fibergraphql.NewHandler(
+		schema,
+	)
+	app.Get("/graphql", handler.Handle)
+	app.Post("/graphql", handler.Handle)
 
 	app.Listen(":3000")
 }
