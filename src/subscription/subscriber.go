@@ -1,4 +1,4 @@
-package fibergraphql
+package subscription
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-type Subscriber struct {
+type subscriber struct {
 	OperationId string
 	operation   graphql.Params
 	ctx         context.Context
@@ -15,13 +15,13 @@ type Subscriber struct {
 	conn        *websocket.Conn
 }
 
-func NewSubscriber(
+func newSubscriber(
 	ctx context.Context,
 	schema graphql.Schema,
 	conn *websocket.Conn,
 	operationId string,
 	operation map[string]interface{},
-) *Subscriber {
+) *subscriber {
 	subscriberCtx, subscriberCtxCancel := context.WithCancel(ctx)
 
 	operationName := ""
@@ -29,15 +29,20 @@ func NewSubscriber(
 		operationName = operation["operationName"].(string)
 	}
 
+	variables := map[string]interface{}{}
+	if operation["variables"] != nil {
+		variables = operation["variables"].(map[string]interface{})
+	}
+
 	graphqlOperation := graphql.Params{
 		Context:        ctx,
 		Schema:         schema,
-		VariableValues: operation["variables"].(map[string]interface{}),
+		VariableValues: variables,
 		OperationName:  operationName,
 		RequestString:  operation["query"].(string),
 	}
 
-	subscriber := &Subscriber{
+	subscriber := &subscriber{
 		ctx:         subscriberCtx,
 		cancelFunc:  subscriberCtxCancel,
 		conn:        conn,
@@ -50,7 +55,7 @@ func NewSubscriber(
 	return subscriber
 }
 
-func (s *Subscriber) execute() {
+func (s *subscriber) execute() {
 	subscribeChannel := graphql.Subscribe(s.operation)
 
 	for {
@@ -59,7 +64,7 @@ func (s *Subscriber) execute() {
 			return
 		case result, ok := <-subscribeChannel:
 			if !ok {
-				s.conn.WriteJSON(NewCompleteMessage(
+				s.conn.WriteJSON(newCompleteMessage(
 					s.OperationId,
 				))
 				return
@@ -71,20 +76,20 @@ func (s *Subscriber) execute() {
 	}
 }
 
-func (s *Subscriber) sendResult(result *graphql.Result) error {
+func (s *subscriber) sendResult(result *graphql.Result) error {
 	if result.HasErrors() {
-		return s.conn.WriteJSON(NewErrorMessage(
+		return s.conn.WriteJSON(newErrorMessage(
 			s.OperationId,
 			result.Errors,
 		))
 	}
 
-	return s.conn.WriteJSON(NewNextMessage(
+	return s.conn.WriteJSON(newNextMessage(
 		s.OperationId,
 		result.Data,
 	))
 }
 
-func (s *Subscriber) Unsubscribe() {
+func (s *subscriber) Unsubscribe() {
 	s.cancelFunc()
 }

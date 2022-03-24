@@ -1,4 +1,4 @@
-package fibergraphql
+package subscription
 
 import (
 	"context"
@@ -9,25 +9,25 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-type SubscriptionConnection struct {
+type connection struct {
 	conn        *websocket.Conn
 	schema      graphql.Schema
 	initialized bool
 	lastPong    time.Time
-	subscribers map[string]*Subscriber
+	subscribers map[string]*subscriber
 }
 
-func NewSubscriptionConnection(conn *websocket.Conn, schema graphql.Schema) *SubscriptionConnection {
-	return &SubscriptionConnection{
+func newConnection(conn *websocket.Conn, schema graphql.Schema) *connection {
+	return &connection{
 		conn:        conn,
 		schema:      schema,
 		initialized: false,
 		lastPong:    time.Time{},
-		subscribers: make(map[string]*Subscriber),
+		subscribers: make(map[string]*subscriber),
 	}
 }
 
-func (c *SubscriptionConnection) ConnectionInitialisationTimeout(ctx context.Context, timeout time.Duration) {
+func (c *connection) ConnectionInitialisationTimeout(ctx context.Context, timeout time.Duration) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -48,7 +48,7 @@ func (c *SubscriptionConnection) ConnectionInitialisationTimeout(ctx context.Con
 	}
 }
 
-func (c *SubscriptionConnection) Ping(ctx context.Context, interval time.Duration) {
+func (c *connection) Ping(ctx context.Context, interval time.Duration) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -57,12 +57,12 @@ func (c *SubscriptionConnection) Ping(ctx context.Context, interval time.Duratio
 			if !c.initialized {
 				continue
 			}
-			c.conn.WriteJSON(NewPingMessage())
+			c.conn.WriteJSON(newPingMessage())
 		}
 	}
 }
 
-func (c *SubscriptionConnection) Handle(ctx context.Context, message *ConnectionMessage) {
+func (c *connection) Handle(ctx context.Context, message *ConnectionMessage) {
 	c.handleConnectionInit(message)
 	c.handlePing(message)
 	c.handlePong(message)
@@ -71,7 +71,7 @@ func (c *SubscriptionConnection) Handle(ctx context.Context, message *Connection
 	c.handleComplete(message)
 }
 
-func (c *SubscriptionConnection) handleConnectionInit(message *ConnectionMessage) {
+func (c *connection) handleConnectionInit(message *ConnectionMessage) {
 	if message.Type != ConnectionInit {
 		return
 	}
@@ -84,20 +84,20 @@ func (c *SubscriptionConnection) handleConnectionInit(message *ConnectionMessage
 		return
 	}
 
-	c.conn.WriteJSON(NewConnectionAckMessage())
+	c.conn.WriteJSON(newConnectionAckMessage())
 
 	c.initialized = true
 }
 
-func (c *SubscriptionConnection) handlePing(message *ConnectionMessage) {
+func (c *connection) handlePing(message *ConnectionMessage) {
 	if message.Type != Ping {
 		return
 	}
 
-	c.conn.WriteJSON(NewPongMessage())
+	c.conn.WriteJSON(newPongMessage())
 }
 
-func (c *SubscriptionConnection) handlePong(message *ConnectionMessage) {
+func (c *connection) handlePong(message *ConnectionMessage) {
 	if message.Type != Pong {
 		return
 	}
@@ -105,7 +105,7 @@ func (c *SubscriptionConnection) handlePong(message *ConnectionMessage) {
 	c.lastPong = time.Now().UTC()
 }
 
-func (c *SubscriptionConnection) handleSubscribe(ctx context.Context, message *ConnectionMessage) {
+func (c *connection) handleSubscribe(ctx context.Context, message *ConnectionMessage) {
 	if message.Type != Subscribe {
 		return
 	}
@@ -126,7 +126,7 @@ func (c *SubscriptionConnection) handleSubscribe(ctx context.Context, message *C
 		return
 	}
 
-	subscriber := NewSubscriber(
+	subscriber := newSubscriber(
 		ctx,
 		c.schema,
 		c.conn,
@@ -136,7 +136,7 @@ func (c *SubscriptionConnection) handleSubscribe(ctx context.Context, message *C
 	c.subscribers[message.Id] = subscriber
 }
 
-func (c *SubscriptionConnection) handleComplete(message *ConnectionMessage) {
+func (c *connection) handleComplete(message *ConnectionMessage) {
 	if message.Type != Complete {
 		return
 	}

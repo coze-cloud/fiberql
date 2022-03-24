@@ -1,4 +1,4 @@
-package fibergraphql
+package subscription
 
 import (
 	"context"
@@ -10,29 +10,24 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-type SubscriptionHandler struct {
+type handler struct {
 	Schema                    graphql.Schema
 	Origins                   []string
 	ConnectionInitWaitTimeout time.Duration
 	PingInterval              time.Duration
 }
 
-func NewSubscriptionHandler(
-	schema graphql.Schema,
-	origins []string,
-	connectionInitWaitTimeout time.Duration,
-	pingInterval time.Duration,
-) *SubscriptionHandler {
-	return &SubscriptionHandler{
-		Schema:                    schema,
-		Origins:                   origins,
-		ConnectionInitWaitTimeout: connectionInitWaitTimeout,
-		PingInterval:              pingInterval,
+func NewHandler(config Config) *handler {
+	return &handler{
+		Schema:                    config.Schema,
+		Origins:                   config.Origins,
+		ConnectionInitWaitTimeout: config.ConnectionInitWaitTimeout,
+		PingInterval:              config.PingInterval,
 	}
 }
 
-func (h *SubscriptionHandler) Handle(ctx *fiber.Ctx) error {
-	return websocket.New(h.HandleWebsocket, websocket.Config{
+func (h *handler) Handle(ctx *fiber.Ctx) error {
+	return websocket.New(h.handleWebsocket, websocket.Config{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		Origins:         h.Origins,
@@ -40,8 +35,8 @@ func (h *SubscriptionHandler) Handle(ctx *fiber.Ctx) error {
 	})(ctx)
 }
 
-func (h *SubscriptionHandler) HandleWebsocket(conn *websocket.Conn) {
-	subconn := NewSubscriptionConnection(conn, h.Schema)
+func (h *handler) handleWebsocket(conn *websocket.Conn) {
+	subconn := newConnection(conn, h.Schema)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

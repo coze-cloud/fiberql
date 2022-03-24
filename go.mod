@@ -1,4 +1,4 @@
-module github.com/coze-hosting/fiber-graphql
+module github.com/coze-cloud/fiberql
 
 go 1.18
 

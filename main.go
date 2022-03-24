@@ -3,7 +3,8 @@ package main
 import (
 	"time"
 
-	fibergraphql "github.com/coze-hosting/fiber-graphql/src"
+	"github.com/coze-cloud/fiberql/src/handler"
+	"github.com/coze-cloud/fiberql/src/subscription"
 	"github.com/gofiber/fiber/v2"
 	"github.com/graphql-go/graphql"
 )
@@ -17,7 +18,6 @@ func main() {
 			},
 			Subscribe: func(p graphql.ResolveParams) (interface{}, error) {
 				c := make(chan interface{})
-
 				go func() {
 					var i int
 					for {
@@ -36,7 +36,6 @@ func main() {
 						}
 					}
 				}()
-
 				return c, nil
 			},
 		},
@@ -52,17 +51,18 @@ func main() {
 
 	app := fiber.New()
 
-	subscriptionHandler := fibergraphql.NewSubscriptionHandler(
-		schema,
-		[]string{"*"},
-		time.Second*10,
-		time.Minute,
-	)
-	app.Get("/subscriptions", subscriptionHandler.Handle)
+	subHandler := subscription.NewHandler(subscription.Config{
+		Schema:                    schema,
+		Origins:                   []string{"*"},
+		ConnectionInitWaitTimeout: time.Second,
+		PingInterval:              time.Minute,
+	})
+	app.Get("/subscriptions", subHandler.Handle)
 
-	handler := fibergraphql.NewHandler(
-		schema,
-	)
+	handler := handler.NewHandler(handler.Config{
+		Schema:   schema,
+		GraphiQl: true,
+	})
 	app.Get("/graphql", handler.Handle)
 	app.Post("/graphql", handler.Handle)
 

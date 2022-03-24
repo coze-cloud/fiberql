@@ -1,4 +1,4 @@
-package fibergraphql
+package subscription
 
 import "github.com/graphql-go/graphql/gqlerrors"
 
@@ -28,25 +28,25 @@ type ConnectionMessage struct {
 	Payload map[string]interface{} `json:"payload,omitempty"`
 }
 
-func NewConnectionAckMessage() *ConnectionMessage {
+func newConnectionAckMessage() *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: ConnectionAck,
 	}
 }
 
-func NewPingMessage() *ConnectionMessage {
+func newPingMessage() *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: Ping,
 	}
 }
 
-func NewPongMessage() *ConnectionMessage {
+func newPongMessage() *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: Pong,
 	}
 }
 
-func NewNextMessage(id string, result interface{}) *ConnectionMessage {
+func newNextMessage(id string, result interface{}) *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: Next,
 		Id:   id,
@@ -56,7 +56,7 @@ func NewNextMessage(id string, result interface{}) *ConnectionMessage {
 	}
 }
 
-func NewErrorMessage(id string, errors []gqlerrors.FormattedError) *ConnectionMessage {
+func newErrorMessage(id string, errors []gqlerrors.FormattedError) *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: Error,
 		Id:   id,
@@ -66,7 +66,7 @@ func NewErrorMessage(id string, errors []gqlerrors.FormattedError) *ConnectionMe
 	}
 }
 
-func NewCompleteMessage(id string) *ConnectionMessage {
+func newCompleteMessage(id string) *ConnectionMessage {
 	return &ConnectionMessage{
 		Type: Complete,
 		Id:   id,
